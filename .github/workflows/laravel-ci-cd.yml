@@ -1,0 +1,101 @@
+name: CI/CD da API Laravel
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # Job 1: Testes e Lint
+  test-and-lint:
+    runs-on: ubuntu-latest
+    name: Testar e Analisar Código
+
+    steps:
+      - name: 1. Obter código do repositório
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, mysql
+          coverage: none
+
+      - name: 3. Copiar .env para testes
+        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+      - name: 4. Instalar dependências (Composer)
+        run: composer install --prefer-dist --no-progress
+
+      - name: 5. Gerar chave da aplicação
+        run: php artisan key:generate
+
+      - name: 6. Configurar banco de dados (SQLite)
+        run: |
+          touch database/database.sqlite
+          php artisan migrate --database=sqlite --force
+
+      - name: 7. Executar Análise Estática (Pint)
+        # O Pint já vem com o Laravel 10+
+        run: ./vendor/bin/pint --test
+
+      - name: 8. Executar Testes (PHPUnit)
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+        run: ./vendor/bin/phpunit
+
+  # Job 2: Deploy (apenas na branch 'main')
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy no Servidor EC2
+    needs: test-and-lint  # Só executa se o job 'test-and-lint' passar
+    if: github.ref == 'refs/heads/main' # Só executa em push para a 'main'
+
+    steps:
+      - name: 1. Obter código do repositório
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar Chave SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.AWS_PRIVATE_KEY }} # Secret do GitHub
+
+      - name: 3. Adicionar Host AWS aos Conhecidos
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.AWS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 4. Executar Script de Deploy na EC2
+        run: |
+          ssh ${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }} << 'EOF'
+            # Navega para a pasta da API (ALTERE SE NECESSÁRIO)
+            cd /var/www/report-api
+
+            # Entra em modo de manutenção
+            php artisan down
+
+            # Baixa as últimas mudanças
+            git pull origin main
+
+            # Instala dependências de produção
+            composer install --no-dev --optimize-autoloader
+
+            # Roda as migrações
+            php artisan migrate --force
+
+            # Limpa e otimiza os caches
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            # Reinicia o processador de filas
+            php artisan queue:restart
+
+            # Sai do modo de manutenção
+            php artisan up
+
+            echo "🚀 Deploy da API concluído!"
+          EOF
