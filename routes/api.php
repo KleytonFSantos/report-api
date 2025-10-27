@@ -1,10 +1,10 @@
 <?php
 
+use App\Jobs\ProcessCsvReport;
+use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
-use App\Models\Report;
-use App\Jobs\ProcessCsvReport;
 
 Route::get('/reports', function (Request $request) {
     return Report::query()->latest()->get();
@@ -30,14 +30,13 @@ Route::post('/reports', function (Request $request) {
 });
 
 Route::get('/reports/{report}/download', function (Request $request, Report $report) {
-    if (!$report) {
+    if (! $report) {
         return response()->json(['message' => 'Relatório não encontrado'], 404);
     }
 
-    if ($report->status !== 'concluido' || !$report->output_path) {
+    if ($report->status !== 'concluido' || ! $report->output_path) {
         return response()->json(['message' => 'Relatório não está pronto'], 404);
     }
 
-    return Storage::download($report->output_path,  $report->original_filename . '.pdf');
+    return Storage::download($report->output_path, $report->original_filename.'.pdf');
 });
-

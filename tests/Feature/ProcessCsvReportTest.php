@@ -2,22 +2,22 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessCsvReport;
+use App\Models\Report;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Log\Logger;
-use Tests\TestCase;
-use App\Models\Report;
-use App\Jobs\ProcessCsvReport;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Kleytondev\CsvReportGenerator\ReportGenerator;
-use \Mockery;
+use Mockery;
+use Tests\TestCase;
 
 class ProcessCsvReportTest extends TestCase
 {
     use RefreshDatabase, WithFaker;
 
-    public function tearDown(): void
+    protected function tearDown(): void
     {
         Mockery::close();
         parent::tearDown();
@@ -25,6 +25,7 @@ class ProcessCsvReportTest extends TestCase
 
     /**
      * Testa o "caminho feliz" (happy path) onde tudo funciona.
+     *
      * @test
      */
     public function it_processes_report_successfully()
@@ -48,7 +49,8 @@ class ProcessCsvReportTest extends TestCase
                 $this->assertEquals(Storage::path($report->input_path), $input);
 
                 $this->assertStringContainsString(Storage::path('private/reports/'), $output);
-                $this->assertStringContainsString('_' . $report->id . '.pdf', $output);
+                $this->assertStringContainsString('_'.$report->id.'.pdf', $output);
+
                 return true;
             });
 
@@ -58,7 +60,7 @@ class ProcessCsvReportTest extends TestCase
         $this->assertDatabaseHas('reports', [
             'id' => $report->id,
             'status' => 'concluido',
-            'error_message' => null
+            'error_message' => null,
         ]);
 
         $report->refresh(); // Pega os dados atualizados do DB
@@ -68,6 +70,7 @@ class ProcessCsvReportTest extends TestCase
 
     /**
      * Testa o "caminho triste" (sad path) onde o pacote falha.
+     *
      * @test
      */
     public function it_handles_processing_failure()
@@ -97,12 +100,13 @@ class ProcessCsvReportTest extends TestCase
         $this->assertDatabaseHas('reports', [
             'id' => $report->id,
             'status' => 'falhou',
-            'error_message' => 'Falha ao gerar PDF'
+            'error_message' => 'Falha ao gerar PDF',
         ]);
     }
 
     /**
      * Testa o que acontece se o ID do relatório não for encontrado.
+     *
      * @test
      */
     public function it_handles_non_existent_report()

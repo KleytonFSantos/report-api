@@ -18,6 +18,6 @@ class Report extends Model
         'original_filename',
         'input_path',
         'output_path',
-        'error_message'
+        'error_message',
     ];
 }
