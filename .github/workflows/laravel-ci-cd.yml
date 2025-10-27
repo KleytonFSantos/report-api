@@ -20,7 +20,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3' # Ajuste para sua versão do PHP
-          extensions: mbstring, dom, curl, xml, fileinfo, mysql, gd, sqlite
+          extensions: mbstring, dom, curl, xml, fileinfo, mysql, gd, sqlite, pdo_sqlite
           coverage: none
 
       - name: 3. Copiar .env para testes
@@ -38,7 +38,6 @@ jobs:
           php artisan migrate --database=sqlite --force
 
       - name: 7. Executar Análise Estática (Pint)
-        # O Pint já vem com o Laravel 10+
         run: ./vendor/bin/pint --test
 
       - name: 8. Executar Testes (PHPUnit)
@@ -58,18 +57,16 @@ jobs:
       - name: 1. Obter código do repositório
         uses: actions/checkout@v4
 
-      # AÇÃO DE SSH ATUALIZADA - Mais robusta
       - name: 2. Configurar Chave SSH e Known Hosts
         uses: shimataro/ssh-key-action@v2
         with:
-          key: ${{ secrets.AWS_PRIVATE_KEY }} # Secret do GitHub
-          name: id_rsa # Nome do arquivo da chave
+          key: ${{ secrets.AWS_PRIVATE_KEY }}
+          name: id_rsa
           known_hosts: |
             ${{ secrets.AWS_HOST }}
 
       - name: 4. Executar Script de Deploy na EC2
         run: |
-          # Adicionadas flags -T e -o StrictHostKeyChecking=no
           ssh -T -o StrictHostKeyChecking=no ${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }} << 'EOF'
             # Navega para a pasta da API (ALTERE SE NECESSÁRIO)
             cd /var/www/report-api
@@ -94,12 +91,19 @@ jobs:
             php artisan route:cache
             php artisan view:cache
 
-            # Reinicia o processador de filas
+            # Reinicia o processador de filas (avisa para recarregar o código)
             php artisan queue:restart
 
             # Sai do modo de manutenção
             php artisan up
 
+            # **ADIÇÃO CRUCIAL:**
+            # Finalmente, garante que o processador de fila (worker) está a correr com PM2
+            echo "Garantindo que o 'queue worker' está a correr com PM2..."
+
+            # Tenta reiniciar (restart) o worker. Se falhar (||), inicia-o pela primeira vez.
+            # O '--name' é crucial para o PM2 se lembrar do processo.
+            pm2 restart laravel-queue-worker 2>/dev/null || pm2 start "php artisan queue:work --sleep=3 --tries=3" --name "laravel-queue-worker"
+
             echo "🚀 Deploy da API concluído!"
           EOF
-
