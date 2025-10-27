@@ -1,0 +1,39 @@
+services:
+  # Database
+  db:
+    image: mysql
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_PASSWORD=
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+      - MYSQL_ROOT_PASSWORD=
+    ports:
+      - '3308:3306'
+    volumes:
+      - ./db_backup:/var/lib/mysql
+    networks:
+      - app-network
+
+  # Test database
+  db_test:
+    image: mysql
+    environment:
+      - MYSQL_DATABASE=${DB_TEST_DATABASE}
+      - MYSQL_PASSWORD=
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+      - MYSQL_ROOT_PASSWORD=
+    ports:
+      - '3307:3306'
+    networks:
+      - app-network
+
+  # Mailer
+  mailer:
+    image: schickling/mailcatcher
+    ports: ["1025:1025", "1080:1080"]
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
