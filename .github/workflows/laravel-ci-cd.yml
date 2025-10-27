@@ -19,7 +19,7 @@ jobs:
       - name: 2. Configurar PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.2' # Ajuste para sua versão do PHP
           extensions: mbstring, dom, fileinfo, mysql
           coverage: none
 
@@ -58,15 +58,16 @@ jobs:
       - name: 1. Obter código do repositório
         uses: actions/checkout@v4
 
-      - name: 2. Configurar Chave SSH
-        uses: webfactory/ssh-agent@v0.9.0
+      # AÇÃO DE SSH ATUALIZADA - Mais robusta
+      - name: 2. Configurar Chave SSH e Known Hosts
+        uses: shimataro/ssh-key-action@v2
         with:
-          ssh-private-key: ${{ secrets.AWS_PRIVATE_KEY }} # Secret do GitHub
+          key: ${{ secrets.AWS_PRIVATE_KEY }} # Secret do GitHub
+          name: id_rsa # Nome do arquivo da chave
+          known_hosts: |
+            ${{ secrets.AWS_HOST }}
 
-      - name: 3. Adicionar Host AWS aos Conhecidos
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.AWS_HOST }} >> ~/.ssh/known_hosts
+      # Etapa 3 foi removida, pois a action acima já cuida disso
 
       - name: 4. Executar Script de Deploy na EC2
         run: |
@@ -99,3 +100,4 @@ jobs:
 
             echo "🚀 Deploy da API concluído!"
           EOF
+
