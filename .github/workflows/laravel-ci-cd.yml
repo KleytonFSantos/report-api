@@ -67,8 +67,6 @@ jobs:
           known_hosts: |
             ${{ secrets.AWS_HOST }}
 
-      # Etapa 3 foi removida, pois a action acima já cuida disso
-
       - name: 4. Executar Script de Deploy na EC2
         run: |
           # Adicionadas flags -T e -o StrictHostKeyChecking=no
@@ -81,6 +79,9 @@ jobs:
 
             # Baixa as últimas mudanças
             git pull origin main
+
+            # Remove o diretório vendor antigo para evitar conflitos
+            rm -rf vendor/
 
             # Instala dependências de produção
             composer install --no-dev --optimize-autoloader
