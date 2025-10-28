@@ -36,7 +36,7 @@ pipeline {
                         echo "A iniciar o deploy no diretório: ${PROJECT_DIR}"
 
                         // 1. Entrar em modo de manutenção
-                        sh "php artisan down"
+                        sh "sudo kill $(lsof -t -i:8000)"
 
                         // 2. Instalar dependências (sem dev)
                         sh "rm -rf vendor/"
@@ -48,19 +48,9 @@ pipeline {
                         sh "php artisan route:cache"
                         sh "php artisan view:cache"
 
-                        // 4. CORREÇÃO: Definir permissões para o www-data (Nginx/PHP-FPM)
+                        // 4. Definir permissões para o www-data (Nginx/PHP-FPM)
                         sh "sudo chown -R $USER:www-data storage bootstrap/cache"
                         sh "sudo chmod -R 775 storage bootstrap/cache"
-
-                        // 5. Reiniciar a fila (Sinaliza ao PM2)
-                        sh "php artisan queue:restart"
-
-                        // 6. ADIÇÃO: Reiniciar o PHP-FPM para carregar o novo código
-                        echo "A reiniciar o PHP-FPM..."
-                        sh "sudo systemctl restart php8.3-fpm"
-
-                        // 7. Sair do modo de manutenção
-                        sh "php artisan up"
 
                         // 8. Garantir que o worker PM2 está a correr
                         echo "A reiniciar o Laravel Queue Worker com PM2..."
@@ -69,7 +59,9 @@ pipeline {
                             export NVM_DIR="${env.NVM_DIR}"
                             [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh"
                             nvm use 20
+                            pm2 start "php artisan serve --host=127.0.0.1 --port=8000" --name "laravel-api-serve" --cwd /var/www/report-api\
                             pm2 restart laravel-queue-worker 2>/dev/null || pm2 start "php artisan queue:work --sleep=3 --tries=3" --name "laravel-queue-worker"
+                            pm2 list
                         """
 
                         echo "🚀 Deploy da API concluído!"

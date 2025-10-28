@@ -82,8 +82,10 @@ jobs:
             # Navega para a pasta da API
             cd /var/www/report-api
 
+            docker compose up --build -d
+
             # Entra em modo de manutenção
-            php artisan down
+            sudo kill $(lsof -t -i:8000)
 
             # Baixa as últimas mudanças
             git pull origin main
@@ -107,16 +109,13 @@ jobs:
             php artisan view:cache
 
             # Reinicia o processador de filas (avisa para recarregar o código)
-            php artisan queue:restart
-
+            pm2 start "php artisan queue:work" --name "laravel-queue-work" --cwd /var/www/report-api
             # Sai do modo de manutenção
-            php artisan up
+            pm2 start "php artisan serve --host=127.0.0.1 --port=8000" --name "laravel-api-serve" --cwd /var/www/report-api\
 
             # Finalmente, garante que o processador de fila (worker) está a correr com PM2
             echo "Garantindo que o 'queue worker' está a correr com PM2..."
-
-            # Tenta reiniciar (restart) o worker. Se falhar (||), inicia-o pela primeira vez.
-            pm2 restart laravel-queue-worker 2>/dev/null || pm2 start "php artisan queue:work --sleep=3 --tries=3" --name "laravel-queue-worker"
+            pm2 list
 
             echo "🚀 Deploy da API concluído!"
           EOF
