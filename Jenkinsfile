@@ -3,11 +3,12 @@
 pipeline {
     agent any // Executa em qualquer 'agente' (máquina) disponível no Jenkins
 
-    // Variáveis de ambiente
     environment {
+        // Define o diretório exato do projeto no servidor
         PROJECT_DIR = '/var/www/report-api'
 
-        NODE_BIN_PATH = '/home/ubuntu/.nvm/versions/node/v20.19.5/bin/node'
+        // Define o caminho para o NVM (para o PM2 do worker)
+        NVM_DIR = '/home/ubuntu/.nvm'
     }
 
     stages {
@@ -30,8 +31,6 @@ pipeline {
         // --- Fase 3: Deploy (CD) ---
         stage('Deploy') {
             steps {
-                // Como o Jenkins está no mesmo servidor,
-                // executamos os comandos localmente.
                 dir(PROJECT_DIR) {
                     script {
                         echo "A iniciar o deploy no diretório: ${PROJECT_DIR}"
@@ -43,36 +42,35 @@ pipeline {
                         sh "rm -rf vendor/"
                         sh "composer install --no-dev --optimize-autoloader"
 
-                        // 4. Migrações e Caches
+                        // 3. Migrações e Caches
                         sh "php artisan migrate --force"
                         sh "php artisan config:cache"
                         sh "php artisan route:cache"
                         sh "php artisan view:cache"
 
+                        // 4. CORREÇÃO: Definir permissões para o www-data (Nginx/PHP-FPM)
+                        sh "sudo chown -R $USER:www-data storage bootstrap/cache"
+                        sh "sudo chmod -R 775 storage bootstrap/cache"
+
                         // 5. Reiniciar a fila (Sinaliza ao PM2)
                         sh "php artisan queue:restart"
 
-                        // 6. Sair do modo de manutenção
+                        // 6. ADIÇÃO: Reiniciar o PHP-FPM para carregar o novo código
+                        echo "A reiniciar o PHP-FPM..."
+                        sh "sudo systemctl restart php8.3-fpm"
+
+                        // 7. Sair do modo de manutenção
                         sh "php artisan up"
 
-                        // 7. Garantir que o worker PM2 está a correr
+                        // 8. Garantir que o worker PM2 está a correr
                         echo "A reiniciar o Laravel Queue Worker com PM2..."
-
-                        // **A CORREÇÃO ESTÁ AQUI:**
-                        // Removemos o '\' antes do '.'
-                        sh '''
-                            # Define o NVM_DIR para o diretório do usuário 'ubuntu'
-                            export NVM_DIR="/home/ubuntu/.nvm"
-
-                            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-
-                            # Ativa a versão 20 (que tem o pm2)
+                        sh """
+                            #!/bin/bash
+                            export NVM_DIR="${env.NVM_DIR}"
+                            [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh"
                             nvm use 20
-
-                            # Agora o 'pm2' deve estar no PATH
-                            echo "A executar o comando PM2..."
                             pm2 restart laravel-queue-worker 2>/dev/null || pm2 start "php artisan queue:work --sleep=3 --tries=3" --name "laravel-queue-worker"
-                        '''
+                        """
 
                         echo "🚀 Deploy da API concluído!"
                     }
@@ -82,7 +80,6 @@ pipeline {
     }
 
     post {
-        // Acontece sempre no final, quer falhe ou tenha sucesso
         always {
             echo 'Limpeza... (se necessário)'
         }
