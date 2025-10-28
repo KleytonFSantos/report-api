@@ -3,11 +3,9 @@
 pipeline {
     agent any // Executa em qualquer 'agente' (máquina) disponível no Jenkins
 
-    // Variáveis de ambiente
     environment {
         // Define o diretório exato do projeto no servidor
         PROJECT_DIR = '/var/www/report-api'
-        NODE_BIN_PATH = '/home/ubuntu/.nvm/versions/node/v20.19.5/bin/node'
     }
 
     stages {
@@ -15,9 +13,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "A obter o código mais recente..."
-                // Limpa o espaço de trabalho antes de obter o código
                 cleanWs()
-                // Obtém o código (já configurado na UI do Jenkins)
                 checkout scm
             }
         }
@@ -25,7 +21,6 @@ pipeline {
         // --- Fase 2: Testes e Lint (Simulado) ---
         stage('Test & Lint (Simulado)') {
             steps {
-                // Num cenário real, aqui correria o PHPUnit e o Pint.
                 echo "A simular testes e lint..."
             }
         }
@@ -61,11 +56,23 @@ pipeline {
                         // 7. Garantir que o worker PM2 está a correr
                         echo "A reiniciar o Laravel Queue Worker com PM2..."
 
-                        // **A CORREÇÃO:** Adiciona o caminho do Node.js (que inclui o pm2) ao PATH
-                        // apenas para este bloco de comandos.
-                        withEnv(["PATH+NODE=${env.NODE_BIN_PATH}"]) {
-                            sh 'pm2 restart laravel-queue-worker 2>/dev/null || pm2 start "php artisan queue:work --sleep=3 --tries=3" --name "laravel-queue-worker"'
-                        }
+                        // **A CORREÇÃO:**
+                        // Usamos 'sh ''' (com três aspas) para um script multi-linha.
+                        // Carregamos o NVM do utilizador 'ubuntu' antes de executar o pm2.
+                        sh '''
+                            # Define o NVM_DIR para o diretório do usuário 'ubuntu'
+                            export NVM_DIR="/home/ubuntu/.nvm"
+
+                            # Carrega o script NVM
+                            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+                            # Ativa a versão 20 (que tem o pm2)
+                            nvm use 20
+
+                            # Agora o 'pm2' deve estar no PATH
+                            echo "A executar o comando PM2..."
+                            pm2 restart laravel-queue-worker 2>/dev/null || pm2 start "php artisan queue:work --sleep=3 --tries=3" --name "laravel-queue-worker"
+                        '''
 
                         echo "🚀 Deploy da API concluído!"
                     }
