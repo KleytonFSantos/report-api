@@ -78,7 +78,7 @@ jobs:
             git pull origin main
 
             # Remove o diretório vendor antigo para evitar conflitos
-            rm -rf vendor/
+            sudo rm -rf vendor/
 
             # Instala dependências de produção
             composer install --no-dev --optimize-autoloader
