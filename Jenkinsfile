@@ -35,9 +35,6 @@ pipeline {
                     script {
                         echo "A iniciar o deploy no diretório: ${PROJECT_DIR}"
 
-                        // 1. Entrar em modo de manutenção
-                        sh "sudo kill \$(lsof -t -i:8000)"
-
                         // 2. Instalar dependências (sem dev)
                         sh "rm -rf vendor/"
                         sh "composer install --no-dev --optimize-autoloader"
@@ -59,10 +56,8 @@ pipeline {
                             export NVM_DIR="${env.NVM_DIR}"
                             [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh"
                             nvm use 20
-                            pm2 delete laravel-api-serve
-                            pm2 delete laravel-queue-work
-                            pm2 start "php artisan serve --host=127.0.0.1 --port=8000" --name "laravel-api-serve" --cwd /var/www/report-api\
-                            pm2 restart laravel-queue-worker 2>/dev/null || pm2 start "php artisan queue:work --sleep=3 --tries=3" --name "laravel-queue-worker"
+                            pm2 restart laravel-api-serve 2>/dev/null || pm2 start "php artisan serve --host=127.0.0.1 --port=8000" --name "laravel-api-serve" --cwd ${PROJECT_DIR}
+                            pm2 restart laravel-queue-worker 2>/dev/null || pm2 start "php artisan queue:work --sleep=3 --tries=3" --name "laravel-queue-worker" --cwd ${PROJECT_DIR}
                             pm2 list
                         """
 
