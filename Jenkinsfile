@@ -3,9 +3,11 @@
 pipeline {
     agent any // Executa em qualquer 'agente' (máquina) disponível no Jenkins
 
+    // Variáveis de ambiente
     environment {
-        // Define o diretório exato do projeto no servidor
         PROJECT_DIR = '/var/www/report-api'
+
+        NODE_BIN_PATH = '/home/ubuntu/.nvm/versions/node/v20.19.5/bin/node'
     }
 
     stages {
@@ -56,15 +58,13 @@ pipeline {
                         // 7. Garantir que o worker PM2 está a correr
                         echo "A reiniciar o Laravel Queue Worker com PM2..."
 
-                        // **A CORREÇÃO:**
-                        // Usamos 'sh ''' (com três aspas) para um script multi-linha.
-                        // Carregamos o NVM do utilizador 'ubuntu' antes de executar o pm2.
+                        // **A CORREÇÃO ESTÁ AQUI:**
+                        // Removemos o '\' antes do '.'
                         sh '''
                             # Define o NVM_DIR para o diretório do usuário 'ubuntu'
                             export NVM_DIR="/home/ubuntu/.nvm"
 
-                            # Carrega o script NVM
-                            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
                             # Ativa a versão 20 (que tem o pm2)
                             nvm use 20
