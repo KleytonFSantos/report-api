@@ -109,10 +109,10 @@ jobs:
             php artisan view:cache
 
             # Reinicia o processador de filas (avisa para recarregar o código)
-            pm2 start "php artisan queue:work" --name "laravel-queue-work" --cwd /var/www/report-api
             # Sai do modo de manutenção
             pm2 delete laravel-api-serve
-            pm2 delete laravel-queue-worker
+            pm2 delete laravel-queue-work
+            pm2 start "php artisan queue:work" --name "laravel-queue-work" --cwd /var/www/report-api
             pm2 start "php artisan serve --host=127.0.0.1 --port=8000" --name "laravel-api-serve" --cwd /var/www/report-api\
 
             # Finalmente, garante que o processador de fila (worker) está a correr com PM2

@@ -60,7 +60,7 @@ pipeline {
                             [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh"
                             nvm use 20
                             pm2 delete laravel-api-serve
-                            pm2 delete laravel-queue-worker
+                            pm2 delete laravel-queue-work
                             pm2 start "php artisan serve --host=127.0.0.1 --port=8000" --name "laravel-api-serve" --cwd /var/www/report-api\
                             pm2 restart laravel-queue-worker 2>/dev/null || pm2 start "php artisan queue:work --sleep=3 --tries=3" --name "laravel-queue-worker"
                             pm2 list
