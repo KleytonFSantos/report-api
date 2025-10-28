@@ -36,7 +36,7 @@ pipeline {
                         echo "A iniciar o deploy no diretório: ${PROJECT_DIR}"
 
                         // 1. Entrar em modo de manutenção
-                        sh "sudo kill $(lsof -t -i:8000)"
+                        sh "sudo kill \$(lsof -t -i:8000)"
 
                         // 2. Instalar dependências (sem dev)
                         sh "rm -rf vendor/"
