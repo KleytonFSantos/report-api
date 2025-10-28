@@ -68,7 +68,18 @@ jobs:
       - name: 4. Executar Script de Deploy na EC2
         run: |
           ssh -T -o StrictHostKeyChecking=no ${{ secrets.AWS_USER }}@${{ secrets.AWS_HOST }} << 'EOF'
-            # Navega para a pasta da API (ALTERE SE NECESSÁRIO)
+
+            # --- ADIÇÃO CRUCIAL: Carregar NVM e Node ---
+            # O SSH não carrega o .bashrc, por isso o NVM e o PM2 não são encontrados.
+            echo "A carregar NVM (Node Version Manager)..."
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            # Ativa a versão do Node (necessária para o pm2)
+            nvm use 20
+            # ---------------------------------------------
+
+            # Navega para a pasta da API
             cd /var/www/report-api
 
             # Entra em modo de manutenção
@@ -77,7 +88,7 @@ jobs:
             # Baixa as últimas mudanças
             git pull origin main
 
-            # Remove o diretório vendor antigo para evitar conflitos
+            # Força a remoção do diretório vendor (requer sudo)
             sudo rm -rf vendor/
 
             # Instala dependências de produção
@@ -85,6 +96,10 @@ jobs:
 
             # Roda as migrações
             php artisan migrate --force
+
+            # Define permissões corretas para o servidor web (www-data)
+            sudo chown -R $USER:www-data storage bootstrap/cache
+            sudo chmod -R 775 storage bootstrap/cache
 
             # Limpa e otimiza os caches
             php artisan config:cache
@@ -97,13 +112,12 @@ jobs:
             # Sai do modo de manutenção
             php artisan up
 
-            # **ADIÇÃO CRUCIAL:**
             # Finalmente, garante que o processador de fila (worker) está a correr com PM2
             echo "Garantindo que o 'queue worker' está a correr com PM2..."
 
             # Tenta reiniciar (restart) o worker. Se falhar (||), inicia-o pela primeira vez.
-            # O '--name' é crucial para o PM2 se lembrar do processo.
             pm2 restart laravel-queue-worker 2>/dev/null || pm2 start "php artisan queue:work --sleep=3 --tries=3" --name "laravel-queue-worker"
 
             echo "🚀 Deploy da API concluído!"
           EOF
+
