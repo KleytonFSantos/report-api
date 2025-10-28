@@ -7,17 +7,7 @@ pipeline {
     environment {
         // Define o diretório exato do projeto no servidor
         PROJECT_DIR = '/var/www/report-api'
-
-        // !!! IMPORTANTE: EDITE ESTE CAMINHO !!!
-        // 1. Aceda ao seu servidor EC2 como 'ubuntu'
-        // 2. Execute:
-        //    export NVM_DIR="$HOME/.nvm"
-        //    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        //    nvm use 20
-        //    which node
-        // 3. Copie o caminho (ex: /home/ubuntu/.nvm/versions/node/v20.19.5/bin/node)
-        // 4. Cole o caminho para o *DIRETÓRIO* (sem o /node no final) abaixo:
-        NODE_BIN_PATH = '/home/ubuntu/.nvm/versions/node/v20.19.5/bin'
+        NODE_BIN_PATH = '/home/ubuntu/.nvm/versions/node/v20.19.5/bin/node'
     }
 
     stages {
