@@ -24,3 +24,4 @@ Homestead.yaml
 Thumbs.db
 .editorconfig
 .gitattributes
+db_backup/
